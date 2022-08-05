@@ -4,8 +4,6 @@ Gopalakrishnan and colleagues (2022) attempted to build a model to predict morta
 
 The viper_train dataset on Canvas contains information about 239 patients from southern India who were diagnosed with having been poisoned by a viper bite. These patients were used to fit their model. The viper_test dataset on Canvas contains the same information about a separate set of 140 patients, who were used to validate the model. Please see the viper_dictionary file on Canvas for an explanation of each of the variables.
 
-Your goal on this problem is to predict whether a patient will die from snakebite poisoning. Do not expect to get anywhere near as good results as the authors; I could not find the values of two very important predictors in their validation set and so they have been removed from both datasets. Simply show me what you have learned in this class. I will be awarding points for doing the following things correctly:
-
 Changing the Outcome variable appropriately, or creating a new response based on Outcome, to reflect that this is a classification problem 
 
 {r}
