@@ -1,0 +1,215 @@
+Snakebite Mortality 
+
+Gopalakrishnan and colleagues (2022) attempted to build a model to predict mortality from snakebite based on predictors that could be measured within 48 hours of admission to a hospital or clinic.
+
+The viper_train dataset on Canvas contains information about 239 patients from southern India who were diagnosed with having been poisoned by a viper bite. These patients were used to fit their model. The viper_test dataset on Canvas contains the same information about a separate set of 140 patients, who were used to validate the model. Please see the viper_dictionary file on Canvas for an explanation of each of the variables.
+
+Your goal on this problem is to predict whether a patient will die from snakebite poisoning. Do not expect to get anywhere near as good results as the authors; I could not find the values of two very important predictors in their validation set and so they have been removed from both datasets. Simply show me what you have learned in this class. I will be awarding points for doing the following things correctly:
+
+Changing the Outcome variable appropriately, or creating a new response based on Outcome, to reflect that this is a classification problem 
+
+{r}
+
+viper_test$Outcome <- factor(viper_test$Outcome)
+viper_train$Outcome <- factor(viper_train$Outcome)
+
+
+#viper_test$Sex <- factor(viper_test$Sex)
+#viper_train$Sex <- factor(viper_train$Sex)
+#viper_test$Outcome<-ifelse(viper_test$Outcome=="0",0,1)
+#viper_train$Outcome<-ifelse(viper_train$Outcome=="0",0,1)
+
+viper_test$Sex<-ifelse(viper_test$Sex=="M",1,0)
+viper_train$Sex<-ifelse(viper_train$Sex=="M",1,0)
+
+
+
+
+Performing exploratory data analysis on the training set and documenting your findings
+
+{r}
+#eda on response of interest: outcome
+viper_train %>% group_by(Outcome)%>%count()
+#we have 187 people who lived a snake bite and 52 who died in this training set
+ggplot(viper_train, aes(x=Outcome)) + geom_bar()
+
+
+#eda on predictors
+#77 females and 162 males in the training set
+viper_train %>% group_by(Sex)%>%count()
+ggplot(viper_train, aes(x=Sex)) + geom_bar()
+
+#age
+age_boxplot <- boxplot(viper_train$Age)
+age_hist <- hist(viper_train$Age, xlab = 'patient age')
+
+#CLS capillary leak syndrome
+# no(0) = 185, yes(1) = 54
+viper_train %>% group_by(CLS)%>%count()
+ggplot(viper_train, aes(x=CLS)) + geom_bar()
+
+
+#Bleeding
+# no bleeding = 107, yes bleeding = 132
+viper_train %>% group_by(Bleeding)%>%count()
+ggplot(viper_train, aes(x=Bleeding)) + geom_bar()
+
+
+#ASVTotal
+asv_boxplot <- boxplot(viper_train$ASVTotal)
+asv_hist <- hist(viper_train$ASVTotal, xlab = 'Total amount of antivenom administered')
+
+
+#platelets
+plate_boxplot <- boxplot(viper_train$Platelets)
+plate_hist <- hist(viper_train$Platelets, xlab = 'Platelet count at 
+admission')
+
+
+#Hb
+
+hb_boxplot <- boxplot(viper_train$Hb)
+hb_hist <- hist(viper_train$Hb, xlab = 'hemoglobin concetration at admission')
+
+#creatine
+creatine_boxplot <- boxplot(viper_train$Creatine)
+creatine_hist <- hist(viper_train$Creatine, xlab = 'serum creatine concentration')
+
+#blood pressure
+#is it possible to have 200bp?
+#can dead people have more than 0 bp?
+bp_boxplot <- boxplot(viper_train$BloodPressure)
+bp_hist <- hist(viper_train$BloodPressure, xlab = 'ystolic blood pressure at admission')
+
+
+
+Performing backward stepwise selection using BIC as a selection criterion and obtaining an estimate of the test error rate on the selected logistic regression model 
+
+{r}
+library(MASS)
+library(tidyverse)
+set.seed(10)
+
+
+outcome_test <- viper_test$Outcome
+
+bglm <- glm(Outcome~.,data=viper_train, family = 'binomial')
+backward <- stepAIC(bglm, data=viper_train,method='backward')
+back_pred <- predict(backward, viper_test)
+
+
+
+#back_error <- sum((outcome_test/sum(backward$residuals))^2)
+
+Fitting at least two of the following four types of models and obtaining an estimate of the test error rate on each model: k-nearest neighbors, generative models (LDA/QDA/naive Bayes), tree-based methods (bagging/random forests/boosting), neural networks (8 pts)
+
+{r knn and rf}
+set.seed(10)
+
+#viper_test$Sex<-ifelse(viper_test$Sex=="M",1,0)
+#viper_train$Sex<-ifelse(viper_train$Sex=="M",1,0)
+#boosted tree
+
+
+
+x_scale_test <- data.frame(
+outcome = as.numeric(viper_test$Outcome),
+sex = as.numeric(viper_test$Sex),
+age = scale(viper_test$Age),
+cls = scale(viper_test$CLS),
+bleeding = scale(viper_test$Bleeding),
+asvTotal = scale(viper_test$ASVTotal),
+platelets = scale(viper_test$Platelets),
+hb = scale(viper_test$Hb),
+creatine = scale(viper_test$Creatine),
+bp = scale(viper_test$BloodPressure)
+) %>% as.matrix()
+
+
+x_scale_train <- data.frame(
+outcome = as.numeric(viper_train$Outcome),
+sex = as.numeric(viper_train$Sex),
+age = scale(viper_train$Age),
+cls = scale(viper_train$CLS),
+bleeding = scale(viper_train$Bleeding),
+asvTotal = scale(viper_train$ASVTotal),
+platelets = scale(viper_train$Platelets),
+hb = scale(viper_train$Hb),
+creatine = scale(viper_train$Creatine),
+bp = scale(viper_train$BloodPressure)
+) %>% as.matrix()
+
+
+
+
+
+#viper_test$Sex <- as.numeric(viper_test$Sex)
+
+#1/2 (fast n dirty random forest)
+library(ranger)
+viper_rf<- ranger(Outcome~., data=viper_train, importance = "permutation", seed=758)
+viper_rf
+#estimate the test MSE :3333333
+#(find the default test)
+viper_class <- predict(viper_rf, data=viper_test)$predictions
+
+#predict each tree and then avg the preds
+viper_predictions <- predict(viper_rf, data = viper_test, predict.all = TRUE)
+
+rf_probs <- apply(viper_predictions$predictions-1,1,mean)
+
+
+
+#neural net
+library(keras)
+
+
+nn_1layer <- keras_model_sequential() %>%
+layer_dense(units = 10, activation = "relu",
+input_shape = ncol(x_scale_train)) %>%
+layer_dropout(rate = 0.4) %>%
+layer_dense(units = 1, activation = "sigmoid")
+
+
+nn_1layer %>% compile(loss = "binary_crossentropy",
+optimizer = optimizer_rmsprop(),
+metrics = list("accuracy"))
+
+outcome_train <- as.numeric(viper_train$Outcome)
+
+nn_fit <- nn_1layer %>% fit(x = x_scale_train,
+y = outcome_train)
+
+nn_preds <- predict(nn_1layer,x=x_scale_test)
+nn_class <- if_else(nn_preds >= 0.5, '0','1')
+
+library(yardstick)
+
+prediction_df <- data.frame(
+  actual = viper_test$Outcome,
+  rf = viper_class,
+  nn = factor(nn_class, levels = c('0','1'))
+)
+
+
+Further investigating the prediction accuracy of at least one model (e.g., by creating a confusion matrix or a ROC Curve, computing sensitivity/specificity, etc.) 
+
+{r}
+#nnet
+#nn
+(nn_conf<- conf_mat(prediction_df, truth = actual, estimate = nn))
+
+
+(rf_conf<- conf_mat(prediction_df, truth = actual, estimate = rf))
+
+
+Selecting a best model and justifying your choice; in particular, you should explain why your model is better than a very stupid model that predicts no one will die (4 pts)
+
+Well my best model is accurate 85% of the time, but at least it is still better than predicting no one will die(?)
+
+{r}
+summary(nn_conf, event_level = "second")
+table(prediction_df$actual,prediction_df$nn)
+
+summary(rf_conf,event_level = 'second')
+
